@@ -1,0 +1,40 @@
+version: "2.3"  # optional since v1.27.0
+services:
+  webapp:
+    build: webapp
+    ports:
+      - "5001:5001"
+    environment:
+      TRTSERVER_HOST: server
+      TRTSERVER_PORT: 8001
+      MODEL_SERVE_NAME: resnet_graphdef
+    command: python flask_server.py
+  server:
+    image: nvcr.io/nvidia/tritonserver:20.12-py3
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./saved_model:/models
+    command: tritonserver --model-repository=/models
+
+  prometheus:
+    image: prom/prometheus:v2.12.0
+    command:
+      - --config.file=/tmp/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus_config:/tmp/prometheus
+  grafana:
+    image: grafana/grafana:6.3.5
+    ports:
+      - 3000:3000
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: secret
+    volumes:
+      - /tmp/grafana:/var/lib/grafana
